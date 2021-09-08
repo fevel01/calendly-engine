@@ -4,9 +4,9 @@ import boto3
 from hvac import Client
 from moto import mock_s3
 
-from ..executable import get_first_users_link, first_request, get_page_token, get_scheduled_list_events, get_list_organization_invitation, pagination, write_to_s3
+from ..executable import get_first_users_link, pagination, write_to_s3
 
-"""
+
 def get_secret(
     secret_name, url="https://vault.nomnomdata.com/", mount_point="developers"
 ):
@@ -14,11 +14,10 @@ def get_secret(
     return vault.secrets.kv.read_secret_version(secret_name, mount_point=mount_point)[
         "data"
     ]["data"]
-"""
+
 
 params = {
-    "calendly_connection": "eyJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJodHRwczovL2F1dGguY2FsZW5kbHkuY29tIiwiaWF0IjoxNjMwMDk4NzA4LCJqdGkiOiIxMjYzM2Q3Yi1kMWI2LTQ5NGUtOTBiNC0yNmNiYWQ2MGZkODQiLCJ1c2VyX3V1aWQiOiJDQkNCN0FQTk1SWTVGSVpIIn0.gjccgijKsAFz2NkgMFN5Ux9HIycU1__oExrp0D719Ok",
-    #"calendly_connection": get_secret("calendly").get("api_token"),
+    "calendly_connection": get_secret("calendly").get("api_token"),
     "s3_folder_path": "calendly_test",
     "data_type": "users",
     "pointer": "2021-09-02T20:34:08.000000Z",

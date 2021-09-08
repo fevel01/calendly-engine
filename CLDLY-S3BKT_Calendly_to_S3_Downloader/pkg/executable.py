@@ -19,7 +19,6 @@ engine = Engine(
     categories=["general", "Calendly", "S3Bucket"],
 )
 BASE_URL = "https://api.calendly.com"
-#UUID = "CBCB7APNMRY5FIZH"
 URL_MAP = {
     "users": {"url": BASE_URL + "/users/",},
     "list_user_events": {"url": BASE_URL + "/event_types?organization=",},
@@ -41,40 +40,33 @@ def upload_parameters(params):
     start_date = params.get("pointer")
     header = {"authorization": "Bearer" + " " + params["calendly_connection"]['token']}
     uuid = uuid_control(params, header)  
-    logger.debug(f"Getting information about {type_data}")
+    logger.info(f"Getting information about {type_data} from {start_date}")
     if type_data == "users":
         url = URL_MAP["users"]["url"] + uuid
         filter_data = requests.get(url=url, headers=header).json()
-        logger.debug(f"Getting information about {type_data}")
-
+        
     if type_data == "list events":
         filter_data = pagination(params, get_first_users_link(header, uuid), header, uuid)
-        logger.debug(f"Getting information about {type_data}")
-    
-    if type_data == "scheduled list events":
         
+    if type_data == "scheduled list events":
         filter_data = pagination(params, get_scheduled_list_events(header, start_date, uuid), header, uuid)
-        logger.debug(f"Getting information about {type_data} from {start_date}")
-    
+        
     if type_data == "organization list invitation":
         filter_data = pagination(params, get_list_organization_invitation(header, uuid), header, uuid)
         
-    logger.debug(f"Getting information about {type_data}")
     name = f"Calendly_{type_data}_{start_date}.json"
     n_days = str(max(get_dates_to_process(dates_control(params))))
-    #end_end = datetime.strptime(n_days, "%Y-%m-%dT%H:%M:%S.%fZ")
     try:
 
         write_to_s3(params, filter_data, name)
         logger.info(f'Data uploaded!')
-        
+        engine.update_parameter(
+        "pointer", n_days,
+        )
+      
     except:
         logger.info("Problems uploading Data")
       
-    engine.update_parameter(
-        "pointer", n_days,
-        )
-
 def dates_control(params):
     start_date = params.get("pointer")
     try:
@@ -155,14 +147,7 @@ def pagination(params, link, headers, uuid):
         h += 1
         progress = "%.2f" % min(100, (((i + 1) * 1.0 / len(las_list)) * 100))
         engine.update_progress(progress=progress)
-        """
-        five_percent = round(len(url_list) * 0.5)
-        
-        if h % five_percent == 0:
-            percent = "%.2f" % ((h / len(url_list)) * 100)
-            engine.update_progress(progress=percent)
-            logger.info(f"Processed {percent}% of the data.")
-      """
+
       return las_list
       
   else:
@@ -179,7 +164,6 @@ def get_dates_to_process(start):
         x.append(start.strftime("%Y-%m-%dT%H:%M:%S.%fZ"))
         start = next_end
     return x
-
 
 def write_to_s3(params, filter_data, name):
     
@@ -219,51 +203,3 @@ def write_to_s3(params, filter_data, name):
         except ClientError as e:
             if e.response["Error"]["Code"] == "404":
                 bucket.upload_fileobj(jsonBinaryFileObj, s3key)
-
-
-
-
-"""
-def upload_parameters(params):
-
-    type_data = params.get("data_type")
-    point = params.get("pointer")
-    header = {"authorization": "Bearer" + params["calendly_connection"]}
-    start_date = datetime.strptime(point, "%Y-%m-%d")
-    n_days = len(get_dates_to_process(start_date))
-    i = 0
-    time = datetime.now().date()
-    while i <= n_days:
-        i += 1
-        five_percent = round(n_days * 0.05)
-        if i % five_percent == 0:
-
-            percent = "%.2f" % ((i / n_days) * 100)
-            engine.update_progress(progress=percent)
-            logger.info(f"Processed {percent}% of the data.")
-
-        if type_data == "users":
-            filter_data = get_users(header)
-            logger.debug(f"Getting information about {type_data} in{time}")
-
-        if type_data == "events":
-            filter_data = get_events(start_date, header, time)
-            logger.debug(f"Getting information about {type_data} in {time}")
-
-        logger.debug(f"Uploading {type_data} of {i} to S3 bucket...")
-
-    name = f"Calendly_{type_data}_{start_date}_to_{time}.json"
-
-    try:
-
-        write_to_s3(params, filter_data, name)
-        logger.info("Data uploaded!")
-        engine.update_parameter(
-            "pointer", datetime.strftime(time, "%Y-%m-%d"),
-        )
-    except:
-        logger.info("Problems uploading Data ")
-
-
-
-"""
