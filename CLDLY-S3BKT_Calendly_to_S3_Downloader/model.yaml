@@ -1,0 +1,102 @@
+uuid: CLNDY-S3BKT
+alias: Calendly to S3 Downloader
+description: Demonstrates basic app structure and functionality.
+nnd_model_version: 2
+categories:
+- name: general
+- name: Calendly
+- name: S3Bucket
+type: engine
+parameter_categories: []
+actions:
+  upload_parameters:
+    display_name: Calendly
+    description: Prints a greeting multiple times in the Task execution log.
+    parameters:
+    - name: source_parameters
+      display_name: Source Parameters
+      description: ''
+      type: group
+      collapsed: false
+      parameters:
+      - name: pointer
+        display_name: Next Run Start Point
+        description: Datetime stamp indicating the starting point, based on updated date, of the data to download.  This field will be automatically after each order is uploaded. Formatted as YYYY-MM-DDTHH:MM:SS.ssZ in UTC timezone.
+        required: true
+        help:
+          header_id: Next Run Start Point
+        default: '2021-09-01T00:00:00.000000Z'
+        type: string
+        shared_object_type_uuid: STRING-SHAREDOBJECT
+      - name: data_type
+        display_name: Data Download
+        description: Select the type of data you want to download
+        required: false
+        help:
+          header_id: Data to download
+        default: Users
+        choices:
+        - Users
+        - Listed Events
+        - Scheduled list events
+        - Organization list invitation
+        type: enum
+    - name: connection_cal
+      display_name: Calendly Connection
+      description: ''
+      type: group
+      collapsed: false
+      parameters:
+      - name: calendly_connection
+        display_name: Calendly API Token Connection
+        description: API Token used to access Calendly
+        required: true
+        help:
+          header_id: Calendly API Token Connection
+        connection_type_uuid: CLDLY-APITK
+        type: connection
+      - name: uuid
+        display_name: Calendly UUID
+        description: Use the UUID of the organization, if not type 'me' to take information about your organization
+        required: true
+        help:
+          header_id: Calendly API Token Connection
+        type: string
+        shared_object_type_uuid: STRING-SHAREDOBJECT
+    - name: destination_parameters
+      display_name: Destination Parameters
+      description: ''
+      type: group
+      collapsed: false
+      parameters:
+      - name: aws_token_storage
+        display_name: Destination AWS Access Connection
+        description: Select the AWS Access Keys to use to access the S3 bucket where the cost metrics data will be stored.
+        required: false
+        help:
+          header_id: Destination AWS Access Connection
+        connection_type_uuid: AWS5D-TO99M
+        type: connection
+      - name: s3_bucket_config
+        display_name: S3 Bucket Configuration
+        description: Select the Shared Config that contains information about the S3 Bucket where the data will be stored.
+        required: false
+        help:
+          header_id: S3 Bucket Configuration
+        shared_config_type_uuid: S3BKT-NND3C
+        type: shared_config
+      - name: target_folder
+        display_name: Target Folder
+        description: Path from the starting folder in the S3 Bucket Configuration to the folder where the data will be stored.
+        required: false
+        help:
+          header_id: Target Folder
+        type: string
+        shared_object_type_uuid: STRING-SHAREDOBJECT
+      - name: allow_overwrite
+        display_name: Allow Overwrite
+        description: Enable to allow existing files with the same name to be overwritten.
+        required: false
+        help:
+          header_id: Allow Overwrite
+        type: boolean
