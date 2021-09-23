@@ -1,60 +1,47 @@
 from nomnomdata.engine import Parameter, ParameterGroup
-from nomnomdata.engine.connections import AWSTokenConnection , CalendlyConnection
+from nomnomdata.engine.connections import AWSTokenConnection, CalendlyConnection
 from nomnomdata.engine.parameters import Boolean, Enum, String
 from nomnomdata.engine.shared_configs import S3Bucket
 
-connection_cal = ParameterGroup(
+pg_source = ParameterGroup(
     Parameter(
         name="calendly_connection",
-        display_name="Calendly API Token Connection",
-        description="API Token used to access Calendly",
+        display_name="Calendly Connection",
+        description="Personal Access Token to use to access Calendly.",
         type=CalendlyConnection,
         required=True,
-        help_header_id="Calendly API Token Connection",
-    ),
-    Parameter(
-        name="uuid",
-        display_name="Calendly UUID",
-        description="Use the UUID of the organization, if not type 'me' to take information about your organization",
-        type=String(),
-        required=True,
-        help_header_id="Calendly API Token Connection",
-    ),
-    name="connection_cal",
-    display_name="Calendly Connection",
-)
- 
-source_parameters = ParameterGroup(
-    Parameter(
-        name="pointer",
-        display_name="Next Run Start Point",
-        description="Datetime stamp indicating the starting point, based on updated date, of the data to download.  This field will be automatically after each order is uploaded. Formatted as YYYY-MM-DDTHH:MM:SS.ssZ in UTC timezone.",
-        type=String(),
-        default="2021-09-01T00:00:00.000000Z",
-        required=True,
-        help_header_id="Next Run Start Point",
+        help_header_id="Calendly Connection",
     ),
     Parameter(
         name="data_type",
-        display_name="Data Download",
-        description="Select the type of data you want to download",
-        type=Enum(choices=["Users", "Listed Events", "Scheduled list events", "Organization list invitation"]),
-        default="Users",
+        display_name="Data Type",
+        description="Select the type of data you want to download.",
+        type=Enum(choices=["Event Types", "Scheduled Events", "Organization Invitations", "Organization Members"]),
+        default="Scheduled Events",
         required=False,
-        help_header_id="Data to download",
+        help_header_id="Data Type",
     ),
-    name="source_parameters",
+    Parameter(
+        name="pointer",
+        display_name="Next Run Start Point",
+        description="Datetime stamp indicating the starting point of the data to download.  This field will be updated automatically after each successful Task execution. Formatted as YYYY-MM-DDTHH:MM:SS in UTC timezone.",
+        type=String(),
+        default="2021-09-01T00:00:00",
+        required=True,
+        help_header_id="Next Run Start Point",
+    ),
+    name="pg_source",
     display_name="Source Parameters",
 )
- 
-s3_connection = ParameterGroup(
+  
+pg_destination = ParameterGroup(
     Parameter(
         type=AWSTokenConnection,
         name="aws_token_storage",
-        display_name="Destination AWS Access Connection",
+        display_name="AWS Access Connection",
         description="Select the AWS Access Keys to use to access the S3 bucket where the cost metrics data will be stored.",
         required=False,
-        help_header_id="Destination AWS Access Connection",
+        help_header_id="AWS Access Connection",
     ),
     Parameter(
         type=S3Bucket,
@@ -81,6 +68,6 @@ s3_connection = ParameterGroup(
         default=False,
         help_header_id="Allow Overwrite",
     ),
-    name="destination_parameters",
+    name="pg_destination",
     display_name="Destination Parameters",
 )
