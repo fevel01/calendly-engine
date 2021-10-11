@@ -1,69 +1,71 @@
 import io
 import json
 import logging
-from datetime import datetime
-from datetime import timedelta
 import boto3
 import requests
+
+from datetime import datetime, timedelta
 from botocore.exceptions import ClientError
 from nomnomdata.engine import Engine
-from .models import connection_cal, s3_connection, source_parameters
+from .models import pg_source, pg_destination
 
 logger = logging.getLogger("engine.calendly")
  
 engine = Engine(
     uuid="CLNDY-S3BKT",
     alias="Calendly to S3 Downloader",
-    description="Demonstrates basic app structure and functionality.",
-    icons={},
-    categories=["general", "Calendly", "S3Bucket"],
+    description="Download information from Calendly and store it in S3.",
+    icons={
+        "1x": "icons/calendly-downloader-s3-256.png",
+        "2x": "icons/calendly-downloader-s3-512.png",
+        "3x": "icons/calendly-downloader-s3-1024.png",
+    },
+    categories=["Calendly", "S3", "Downloader"],
 )
+
 BASE_URL = "https://api.calendly.com"
 URL_MAP = {
     "users": {"url": BASE_URL + "/users/",},
     "list_user_events": {"url": BASE_URL + "/event_types?organization=",},
     "scheduled_list_events":{"url": BASE_URL + "/scheduled_events?organization=",},
-    "list_organization_invitation" : {"url": BASE_URL + "/organizations/"}
+    "list_organization_invitation" : {"url": BASE_URL + "/organizations/"},
+    "list_organization_memberships" : {"url": BASE_URL + "/organization_memberships?organization="}
 }
 
 @engine.action(
-    display_name="Calendly",
-    description="Prints a greeting multiple times in the Task execution log.",
-    help_md_path="",
+    display_name="Download Data",
+    description="Download user or event data from Calendly and store it in a JSON formatted file in an S3 bucket.",
+    help_md_path="help/download_data.md",
 )
-@engine.parameter_group(s3_connection)
-@engine.parameter_group(connection_cal)
-@engine.parameter_group(source_parameters)
-
-def upload_parameters(params):
-    type_data = params.get("data_type").lower()
+@engine.parameter_group(pg_destination)
+@engine.parameter_group(pg_source)
+def download_data(params):
+    type_data = params.get("data_type")
     start_date = params.get("pointer")
     header = {"authorization": "Bearer" + " " + params["calendly_connection"]['token']}
     uuid = uuid_control(params, header)  
-    logger.info(f"Getting information about {type_data} from {start_date}")
-    if type_data == "users":
+    logger.info(f"Downloading {type_data} created or updated after {start_date}")
+    type_data = type_data.replace(' ', '_').lower()
+    if type_data == "organization_members":
         url = URL_MAP["users"]["url"] + uuid
         filter_data = requests.get(url=url, headers=header).json()
         
-    if type_data == "list events":
+    if type_data == "event_types":
         filter_data = pagination(params, get_first_users_link(header, uuid), header, uuid)
         
-    if type_data == "scheduled list events":
+    if type_data == "scheduled_events":
         filter_data = pagination(params, get_scheduled_list_events(header, start_date, uuid), header, uuid)
         
-    if type_data == "organization list invitation":
+    if type_data == "organization_invitations":
         filter_data = pagination(params, get_list_organization_invitation(header, uuid), header, uuid)
         
     name = f"Calendly_{type_data}_{start_date}.json"
     n_days = str(max(get_dates_to_process(dates_control(params))))
-    try:
 
+    try:
         write_to_s3(params, filter_data, name)
         logger.info(f'Data uploaded!')
-        engine.update_parameter(
-        "pointer", n_days,
-        )
-      
+        engine.update_parameter("pointer", n_days)      
     except:
         logger.info("Problems uploading Data")
       
@@ -75,19 +77,12 @@ def dates_control(params):
         raise ValueError("Incorrect data format, should be YYYY-MM-DDTHH:MM:SS.sssZ")
 
 def uuid_control(params, headers):
-    if params.get("uuid") == "me": 
-        url = URL_MAP["users"]["url"] + "me"
-        response = requests.get(url=url, headers=headers).json()
-        uri = response.get("resource")["uri"]
-        return uri.split('/')[-1]
-    else: 
-        try: 
-            return params.get("uuid")
-        except:
-            logger.info("Insert a valid UUID")
+    url = URL_MAP["users"]["url"] + "me"
+    response = requests.get(url=url, headers=headers).json()
+    uri = response.get("resource")["current_organization"]
+    return uri.split('/')[-1]
 
-def get_first_users_link(headers, uuid):
-    
+def get_first_users_link(headers, uuid):    
     url = URL_MAP["users"]["url"] + uuid
     response = requests.get(url=url, headers=headers).json()
     url_organization = response.get("resource")["current_organization"]
@@ -117,8 +112,7 @@ def get_list_organization_invitation(headers, uuid):
   final_url = url1 + url_organization.split('/')[-1] + "/invitations"
   return final_url
 
-def pagination(params, link, headers, uuid):
-  
+def pagination(params, link, headers, uuid):  
   url_list = []
   first_url = get_first_users_link(headers, uuid)
   url_list.append(link)  
@@ -197,7 +191,6 @@ def write_to_s3(params, filter_data, name):
     if params["allow_overwrite"]:
         bucket.upload_fileobj(jsonBinaryFileObj, s3key)
     else:
-
         try:
             s3.head_object(Bucket=params["s3_bucket_config"]["bucket"], Key=s3key)
         except ClientError as e:
